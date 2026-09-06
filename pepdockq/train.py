@@ -18,7 +18,7 @@ from pepdockq.models.losses import (
     DockQPairwiseThresholdLoss,
     EdgeBinnedSoftTargetLoss,
 )
-from pepdockq.data import PepDataset, PepDatasetPair, PepDatasetPairWeighted
+from pepdockq.data import PepDataset, PepDatasetPair
 from pepdockq.metrics import (
     calculate_accuracy_per_category_numpy,
     compute_success_rate_sorted,

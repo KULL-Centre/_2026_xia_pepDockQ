@@ -489,16 +489,6 @@ def get_esmif_feat(esmif_file, peptide_chains, receptor_chains):
     return pep_esmif_emb, rec_esmif_emb
 
 
-def clip_pocket_from_distance_map(pr_dist, pocket_th):
-    rp_dist = pr_dist.T
-    rp_contact = torch.where(rp_dist > pocket_th, 0, rp_dist)
-    rp_contact_dist = rp_contact.sum(dim=1)
-    rp_contact_nonzero = rp_contact_dist.nonzero()
-    pocket_idx = rp_contact_nonzero.squeeze(1)
-    return pocket_idx
-
-
-
 def cal_edge_attr(mol1_backbone_coords, mol1_sidechain, mol2_backbone_coords, mol2_sidechain, edge_index):
 
     N1 = mol1_backbone_coords[:,0,:][edge_index[0]]

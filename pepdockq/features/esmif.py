@@ -226,13 +226,6 @@ def score_variants(sequence, token_probs, alphabet):
     return score_matrix
 
 
-def parse_chain_ids(chain_ids_value):
-    if chain_ids_value is None:
-        return None
-    chain_ids = [item.strip() for item in chain_ids_value.split(",") if item.strip()]
-    return chain_ids or None
-
-
 def write_fasta(sequences, fasta_output, pdb_id):
     """Write chain sequences to a FASTA file. Non-standard AAs are already encoded as X."""
     os.makedirs(os.path.dirname(fasta_output) or ".", exist_ok=True)
@@ -345,30 +338,6 @@ def extract_esmif(
 
         with open(out_path, "wb") as f:
             pickle.dump({"multimer": complex_reps_dict, "monomer": single_chain_reps_dict}, f)
-
-
-def extract_esmif_batch(
-    pdb_paths,
-    sequences,
-    out_paths,
-    json_outputs=None,
-):
-    if len(pdb_paths) != len(out_paths):
-        raise ValueError("pdb_paths and out_paths must be the same length.")
-    if json_outputs is not None and len(json_outputs) != len(pdb_paths):
-        raise ValueError("json_outputs must be the same length as pdb_paths.")
-
-    model, alphabet = load_esmif_model()
-    for idx, raw_complex_pdb_path in enumerate(pdb_paths):
-        json_output = json_outputs[idx] if json_outputs is not None else None
-        extract_esmif(
-            raw_complex_pdb_path=raw_complex_pdb_path,
-            sequences=sequences,
-            out_path=out_paths[idx],
-            json_output=json_output,
-            model_arg=model,
-            alphabet_arg=alphabet,
-        )
 
 
 def main():

@@ -37,6 +37,19 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$REPO_ROOT"
 
 # -----------------------------------------------------------------------------
+# Config file (dotenv-style). Every entry inside uses `${VAR:=default}` so any
+# variable already set in the caller's environment wins over the config.
+# -----------------------------------------------------------------------------
+CONFIG=${CONFIG:-configs/predict.env}
+if [[ -f "$CONFIG" ]]; then
+    echo "[PIPELINE] loading config: $CONFIG"
+    # shellcheck disable=SC1090
+    source "$CONFIG"
+else
+    echo "[PIPELINE] config file not found: $CONFIG (falling back to environment only)"
+fi
+
+# -----------------------------------------------------------------------------
 # Required parameters
 # -----------------------------------------------------------------------------
 : "${PDB_DIR:?Set PDB_DIR (input folder of PDB files)}"

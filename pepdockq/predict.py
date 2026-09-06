@@ -33,11 +33,6 @@ class PredPepDataset:
         return torch.load(path, weights_only=False)
 
 
-
-
-
-
-
 def run_prediction(model, val_list, args, mode):
     """Run model forward pass and collect predictions. Returns list of {decoy_id, pred_score}."""
     model.eval()
