@@ -1,0 +1,28 @@
+# PyTorch (CUDA 12.1) + PyG wheels.
+# These extra wheel sources must stay at the top so pip can resolve the
+# +cu121 / pt24cu121 builds. PyPI is still used for everything else.
+--extra-index-url https://download.pytorch.org/whl/cu121
+-f https://data.pyg.org/whl/torch-2.4.0+cu121.html
+
+# Deep learning core (directly imported by the pipeline)
+torch==2.4.0
+torch-geometric==2.6.1
+torch-scatter==2.1.2
+torch-cluster==1.6.3
+# PyG optional accelerators (transitive, kept for full PyG functionality)
+torch-sparse==0.6.18
+torch-spline-conv==1.2.2
+pyg-lib==0.4.0
+
+# Scientific stack (directly imported by the pipeline)
+numpy==1.26.4
+scipy==1.13.1
+pandas==2.3.3
+biopython==1.85
+biotite==0.40.0
+
+# ESM (directly imported by the pipeline)
+fair-esm==2.0.0
+
+# Utils
+tqdm==4.67.3
