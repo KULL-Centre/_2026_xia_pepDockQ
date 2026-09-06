@@ -4,7 +4,6 @@ import pickle
 import argparse
 import torch.optim as optim
 from torch_geometric.loader import DataLoader
-from model_graph import HGNN
 from tqdm import tqdm
 import sys
 import json
@@ -12,18 +11,23 @@ from datetime import datetime
 from scipy.stats import spearmanr, pearsonr
 import numpy as np
 from sklearn.metrics import matthews_corrcoef, roc_auc_score, average_precision_score
-from dataset import PepDataset, PepDatasetPair, PepDatasetPairWeighted
-from valid_metrices import calculate_accuracy_per_category_numpy, compute_success_rate_sorted
 from torch.utils.tensorboard import SummaryWriter
-from model_loss import DockQPairwiseThresholdLoss, EdgeBinnedCrossEntropyLoss, EdgeBinnedSoftTargetLoss
-import csv
 
+from pepdockq.models.hgnn import HGNN
+from pepdockq.models.losses import (
+    DockQPairwiseThresholdLoss,
+    EdgeBinnedSoftTargetLoss,
+)
+from pepdockq.data import PepDataset, PepDatasetPair, PepDatasetPairWeighted
+from pepdockq.metrics import (
+    calculate_accuracy_per_category_numpy,
+    compute_success_rate_sorted,
+)
+import csv
 
 DOCKQ_THRESHOLDS = [0.23, 0.49, 0.8]
 
-
 def find_optimal_pdockq_thresholds(all_dockq, all_pdockq, dockq_thresholds=None, n_steps=100):
-    """For each DockQ threshold, find pDockQ threshold with maximum MCC."""
     if dockq_thresholds is None:
         dockq_thresholds = DOCKQ_THRESHOLDS
 
@@ -51,6 +55,26 @@ def find_optimal_pdockq_thresholds(all_dockq, all_pdockq, dockq_thresholds=None,
 
     return optimal_thresholds
 
+
+class Logger(object):
+    def __init__(self, filename):
+        self.terminal = sys.stdout
+        self.log = open(filename, 'ab',buffering=0)
+
+    def write(self, message):
+        self.terminal.write(message)
+        try:
+            self.log.write(message.encode('utf-8'))
+        except ValueError:
+            pass
+
+    def close(self):
+        self.log.close()
+        sys.stdout = self.terminal
+
+    def flush(self):
+        pass
+    
 def setup_experiment(args, base_dir="outputs"):
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     exp_dir = os.path.join(base_dir, timestamp)
@@ -65,26 +89,6 @@ def setup_experiment(args, base_dir="outputs"):
     print(f"[INFO] Config saved to {config_path}")
 
     log_path = os.path.join(exp_dir, "log.txt")
-
-    class Logger(object):
-        def __init__(self, filename):
-            self.terminal = sys.stdout
-            self.log = open(filename, 'ab',buffering=0)
-
-        def write(self, message):
-            self.terminal.write(message)
-            try:
-                self.log.write(message.encode('utf-8'))
-            except ValueError:
-                pass
-
-        def close(self):
-            self.log.close()
-            sys.stdout = self.terminal
-
-        def flush(self):
-            pass
-
     sys.stdout = Logger(log_path)
 
     print(f"[INFO] Logging to {log_path}")
@@ -98,10 +102,7 @@ def train(model, args, model_save_dir):
     train_list = args.train_list
 
     print('[RUN] Load dataset... ')
-    if args.weighted_pair_sampling:
-        train_data = PepDatasetPairWeighted(train_list, 'train', args.data_path, N_sample=20)
-    else:
-        train_data = PepDatasetPair(train_list, 'train', args.data_path)
+    train_data = PepDatasetPair(train_list, 'train', args.data_path)
 
     train_loader = DataLoader(
         train_data,
@@ -120,24 +121,13 @@ def train(model, args, model_save_dir):
         huber_delta=args.huber_delta,
     ).to(args.device)
 
-    if args.soft_local_target:
-        local_loss_fn = EdgeBinnedSoftTargetLoss(
-            num_error_bins=args.num_error_bins,
-            min_error=args.min_error,
-            max_error=args.max_error,
-            sigma_bins=args.sigma_bins,
-            lambda_error=args.lambda_error,
-        ).to(args.device)
-
-    else:
-        local_loss_fn = EdgeBinnedCrossEntropyLoss(
-            num_error_bins=args.num_error_bins,
-            min_error=args.min_error,
-            max_error=args.max_error,
-            lambda_error=args.lambda_error,
-        ).to(args.device)
-
-
+    local_loss_fn = EdgeBinnedSoftTargetLoss(
+        num_error_bins=args.num_error_bins,
+        min_error=args.min_error,
+        max_error=args.max_error,
+        sigma_bins=args.sigma_bins,
+        lambda_error=args.lambda_error,
+    ).to(args.device)
 
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     print(f"[INFO] Optimizer initialized with learning rate {args.lr}")
@@ -146,7 +136,6 @@ def train(model, args, model_save_dir):
 
     global_step = 0
     for epoch in range(args.epochs):
-
         model.train()
 
         total_loss_list = []
@@ -182,15 +171,15 @@ def train(model, args, model_save_dir):
             global_step += 1
 
         avg_total_loss = torch.stack(total_loss_list).mean()
+        avg_local_loss = torch.stack(local_loss_list).mean()
         avg_global_reg_loss = torch.stack(global_reg_loss_list).mean()
         avg_global_pair_loss = torch.stack(global_pair_loss_list).mean()
-        avg_local_loss = torch.stack(local_loss_list).mean()
 
         print(f"Epoch {epoch}/{args.epochs}")
-        print(f"Train | local: {avg_local_loss:.4f} reg: {avg_global_reg_loss:.4f} pair: {avg_global_pair_loss:.4f} total: {avg_total_loss:.4f}")
+        print(f"Train | reg: {avg_global_reg_loss:.4f} pair: {avg_global_pair_loss:.4f} total: {avg_total_loss:.4f} local: {avg_local_loss:.4f} ")
 
         val_result_all = {}
-        test1_result_all = {}
+        test_result_all = {}
 
         for bin in ["0.0-0.4", "0.4-0.8", "0.8-1.0"]:
             print('-----------evaluate on bin:', bin, '-----------')
@@ -207,13 +196,13 @@ def train(model, args, model_save_dir):
             )
 
             test_list = args.test_sim_dict[bin]
-            test1_pearson, test1_result, _ = evaluate(
+            test_pearson, test_result, _ = evaluate(
                 model,
                 test_list,
                 local_loss_fn,
                 global_loss_fn,
                 args,
-                f'{bin}-test1',
+                f'{bin}-test',
                 epoch,
                 fixed_pdockq_thresholds={'0.23': 0.23, '0.49': 0.49, '0.8': 0.8},
             )
@@ -224,15 +213,15 @@ def train(model, args, model_save_dir):
 
             for pdb_id in val_result:
                 val_result_all[pdb_id] = val_result[pdb_id]
-            for pdb_id in test1_result:
-                test1_result_all[pdb_id] = test1_result[pdb_id]
+            for pdb_id in test_result:
+                test_result_all[pdb_id] = test_result[pdb_id]
             
         torch.save(model.state_dict(), f"{model_save_dir}/model_epoch{epoch}.pth")
         with open(f"{model_save_dir}/prediction_epoch{epoch}.pkl", 'wb') as f:
             pickle.dump(
                 {
                     'valid': val_result_all,
-                    'test1': test1_result_all,
+                    'test': test_result_all,
                     'valid_selected_pdockq_thresholds': val_pdockq_thresholds,
                 },
                 f,
@@ -322,10 +311,6 @@ def evaluate(model, val_list, local_loss_fn, global_loss_fn, args, mode, epoch, 
             all_best_dockq.append(torch.max(pdb_target))
             all_topk_dockqs.append(topk_dockqs)
             pdb_num += 1
-
-    # -----------------------------
-    # Block 2: Metrics and logging
-    # -----------------------------
 
     all_pdockq = torch.cat(all_pdockq, dim=0).cpu().detach().numpy()
     all_dockq = torch.cat(all_dockq, dim=0).cpu().detach().numpy()
@@ -419,8 +404,7 @@ def load_all_pdbs_with_similarity(tsv_path):
         for row in reader:
             try:
                 pdb_sim[row['pep_id']] = {
-                    'max_receptor_seq_identity': float(row['max_receptor_seq_identity']),
-                    'max_pdb_rec_seq_identity': float(row['max_pdb_receptor_seq_identity']),
+                    'max_pdb_receptor_seq_identity': float(row['max_pdb_receptor_seq_identity']),
                 }
             except (ValueError, KeyError):
                 continue
@@ -432,28 +416,25 @@ def load_all_pdbs_with_similarity(tsv_path):
     for (lo, hi), label in zip(_bins, _bin_labels):
         similar_dict[label] = [
             pdb_id for pdb_id in pdb_sim.keys()
-            if lo <= pdb_sim.get(pdb_id, {}).get('max_pdb_rec_seq_identity', -1) < hi
+            if lo <= pdb_sim.get(pdb_id, {}).get('max_pdb_receptor_seq_identity', -1) < hi
         ]
     return similar_dict
 
 
-def boltz2_parse_argument():
+def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--features", type=list, default=['esm', 'zscale', 'dihedrals', 'esmif_mutation_score']) # 'esm','zscale','dihedrals','esmif_mutation_score'
-    parser.add_argument("--weighted_pair_sampling", type=bool, default=False)
 
     # loss weights
     parser.add_argument("--huber_delta", type=float, default=0.1)
     parser.add_argument("--lambda_pair", type=float, default=1.0)
     parser.add_argument("--lambda_error", type=float, default=0.00)
     
-    parser.add_argument("--soft_local_target", type=bool, default=True)
     parser.add_argument("--num_error_bins", type=int, default=32) 
     parser.add_argument("--min_error", type=float, default=-5.0)
     parser.add_argument("--max_error", type=float, default=30.0)
     parser.add_argument("--sigma_bins", type=float, default=1.5)
 
-    # parser.add_argument("--contact_th", type=int, default=6)
 
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--batch_size", type=int, default=32)
@@ -462,50 +443,58 @@ def boltz2_parse_argument():
 
     parser.add_argument("--hidden_channels", type=int, default=256)
     parser.add_argument("--heads", type=int, default=4)
-    parser.add_argument("--esm_seq_dropout", type=float, default=0.15,
-                        help="Per-residue ESM feature dropout probability during training (0=off)")
 
     parser.add_argument("--lr", type=float, default=0.00005)
     parser.add_argument("--device", type=str, default="cuda")
-    parser.add_argument("--data_path", type=str, default="/novo/projects/departments/cdd/molecular_ai/yiui/workspace/PepQA/dataset/boltz2_diverse_0p02_pdb_feature/GVP_hetero_radius10_pocketNone_sctypesc_repatomsc_4edgetypes")
+    parser.add_argument("--data_path", type=str, required=True,
+                        help="Directory of pre-computed graph .pt features (output of collect_inputs.py, "
+                             "typically <feature_dir>/graph)")
+    parser.add_argument("--train_list", dest="train_list_path", type=str, required=True,
+                        help="Text file with one training PDB id per line")
+    parser.add_argument("--valid_list", dest="valid_list_path", type=str, required=True,
+                        help="TSV file for validation split with columns pep_id, max_receptor_seq_identity, "
+                             "max_pdb_receptor_seq_identity (see docs/data_format.md)")
+    parser.add_argument("--test_list", dest="test_list_path", type=str, required=True,
+                        help="TSV file for test split, same schema as --valid_list")
+    parser.add_argument("--output_dir", type=str, default="outputs",
+                        help="Root directory for experiment outputs (checkpoints, logs, tensorboard)")
 
-    def read_list(file_path):
-        with open(file_path, 'r') as f:
-            lines = f.read().splitlines()
-        return lines
+    return parser.parse_args()
 
 
-    train_list_path = "/novo/projects/departments/cdd/molecular_ai/yiui/workspace/PepQA/dataset/boltz2_data_split/train.txt"
-    valid_list_path = "/novo/projects/departments/cdd/molecular_ai/yiui/workspace/PepQA/dataset/boltz2_data_split/valid_similar_score_updated.tsv"
-    test_list_path = "/novo/projects/departments/cdd/molecular_ai/yiui/workspace/PepQA/dataset/boltz2_data_split/test_similar_score_updated.tsv"
+def _read_list(path):
+    with open(path, 'r') as f:
+        return f.read().splitlines()
 
-    args = parser.parse_args()
 
-    args.train_list = read_list(train_list_path)
+def load_splits(args):
+    """Read the split files listed in ``args`` and attach them to ``args``."""
+    args.train_list = _read_list(args.train_list_path)
+    args.valid_sim_dict = load_all_pdbs_with_similarity(args.valid_list_path)
+    args.test_sim_dict = load_all_pdbs_with_similarity(args.test_list_path)
+
     print('train number:', len(args.train_list))
-    
-    args.valid_sim_dict = load_all_pdbs_with_similarity(valid_list_path)  
-    args.test_sim_dict = load_all_pdbs_with_similarity(test_list_path)  
-
-    print("\nTest PDBs by max_pdb_rec_seq_identity bin:")
+    print("\nTest PDBs by max_pdb_receptor_seq_identity bin:")
     for label, pdb_list in args.test_sim_dict.items():
         print(f"  {label}: {len(pdb_list)} PDBs")
-    print("\nValid PDBs by max_pdb_rec_seq_identity bin:")
+    print("\nValid PDBs by max_pdb_receptor_seq_identity bin:")
     for label, pdb_list in args.valid_sim_dict.items():
         print(f"  {label}: {len(pdb_list)} PDBs")
 
-    return args
 
+def main():
+    global writer
+    args = parse_arguments()
+    load_splits(args)
+    model_saved_dir = setup_experiment(args, base_dir=args.output_dir)
+    writer = SummaryWriter(log_dir=model_saved_dir)
+
+    model = HGNN(num_layers=args.num_layers, hidden_channels=args.hidden_channels,
+                 features=args.features, heads=args.heads, num_error_bins=args.num_error_bins)
+
+    train(model, args, model_save_dir=model_saved_dir)
 
 
 if __name__ == "__main__":
-
-    args = boltz2_parse_argument()
-    model_saved_dir = setup_experiment(args, base_dir="/novo/projects/departments/cdd/molecular_ai/yiui/workspace/PepQA/checkpoints")
-    writer = SummaryWriter(log_dir=model_saved_dir)
-
-    model = HGNN(num_layers=args.num_layers, hidden_channels=args.hidden_channels, 
-                   features=args.features, heads=args.heads, num_error_bins=args.num_error_bins)
-
-    train(model, args, model_save_dir=model_saved_dir)
+    main()
 

@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use pepDockQ in your research, please cite it as below."
+title: "pepDockQ: Graph-based quality estimation for peptide-protein complexes"
+version: 0.1.0
+date-released: 2025-01-01
+license: MIT
+repository-code: "https://github.com/<org>/pepDockQ"
+authors:
+  - family-names: "<Last>"
+    given-names: "<First>"
+    affiliation: "Linderstrøm-Lang Centre for Protein Science, University of Copenhagen"

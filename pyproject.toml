@@ -1,0 +1,58 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pepdockq"
+version = "0.1.0"
+description = "Graph-based quality estimation for peptide-protein complexes"
+readme = "README.md"
+requires-python = ">=3.9,<3.11"
+license = {file = "LICENSE"}
+authors = [
+    # TODO: fill in author metadata for the release
+    { name = "REPLACE_ME", email = "REPLACE_ME@example.com" },
+]
+keywords = [
+    "peptide-protein docking",
+    "quality estimation",
+    "graph neural network",
+    "structural bioinformatics",
+    "DockQ",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
+
+# NOTE: the runtime dependencies live in requirements.txt (with pinned +cu121
+# PyTorch and torch-geometric wheels). We deliberately do NOT re-declare them
+# here — PEP 621 dependency specifiers cannot express the extra index URLs that
+# resolve the CUDA / PyG wheels. Install with:
+#
+#     pip install -r requirements.txt
+#     pip install -e .
+#
+# for an editable, no-op-dependency install of the package itself.
+dependencies = []
+
+[project.urls]
+# TODO: replace once the public GitHub URL is registered
+Homepage      = "https://github.com/REPLACE_ME/pepDockQ"
+Repository    = "https://github.com/REPLACE_ME/pepDockQ"
+"Bug Tracker" = "https://github.com/REPLACE_ME/pepDockQ/issues"
+
+[project.scripts]
+# `pepdockq-predict` / `pepdockq-train` are thin console-entry wrappers around
+# the same argparse main() functions invoked by `python -m pepdockq.…`.
+pepdockq-predict = "pepdockq.predict:main"
+pepdockq-train   = "pepdockq.train:main"
+
+[tool.setuptools]
+packages = ["pepdockq", "pepdockq.features", "pepdockq.models"]
+
+[tool.setuptools.package-data]
+pepdockq = []

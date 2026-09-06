@@ -1,5 +1,3 @@
-# source /opt/software/miniconda/py39_25.9.1-1/bin/activate esm-if
-
 import argparse
 import json
 import os

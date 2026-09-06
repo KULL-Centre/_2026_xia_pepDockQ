@@ -2,7 +2,7 @@ import os
 import torch
 import argparse
 from torch_geometric.loader import DataLoader
-from model_graph import HGNN
+from pepdockq.models.hgnn import HGNN
 from tqdm import tqdm
 import csv
 
@@ -86,12 +86,11 @@ def parse_argument():
 
 
 
-if __name__ == "__main__":
-
+def main():
     args = parse_argument()
 
     model = HGNN(num_layers=4, hidden_channels=256,
-                   features=["esm",'zscale','dihedrals','esmif_mutation_score'],
+                   features=["esm", 'zscale', 'dihedrals', 'esmif_mutation_score'],
                    heads=4, num_error_bins=32)
     checkpoint = torch.load(args.checkpoint, map_location=args.device)
     model.load_state_dict(checkpoint)
@@ -111,4 +110,8 @@ if __name__ == "__main__":
         writer.writeheader()
         writer.writerows(decoy_results)
     print(f"[INFO] Predictions saved to {args.output} ({len(decoy_results)} decoys)")
+
+
+if __name__ == "__main__":
+    main()
 
