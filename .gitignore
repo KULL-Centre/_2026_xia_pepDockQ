@@ -30,8 +30,6 @@ slurm-*.err
 *.pkl
 *.pt
 
-# Model weights — fetched via scripts/download_weights.sh, not versioned
-assets/model.pth
 
 # TensorBoard
 events.out.tfevents.*

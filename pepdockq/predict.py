@@ -53,7 +53,8 @@ def run_prediction(model, val_list, args, mode):
     with torch.no_grad():
         for data in tqdm(val_loader, desc=f"Predicting {mode}"):
             data = data.to(args.device)
-            global_pred = model(data).detach().reshape(-1).cpu().numpy()
+            _, _, global_pred = model(data)
+            global_pred = global_pred.detach().reshape(-1).cpu().numpy()
             batch_size = len(global_pred)
             batch_decoy_ids = all_decoy_ids[cursor: cursor + batch_size]
             cursor += batch_size

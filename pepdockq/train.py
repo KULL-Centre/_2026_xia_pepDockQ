@@ -428,15 +428,14 @@ def parse_arguments():
     # loss weights
     parser.add_argument("--huber_delta", type=float, default=0.1)
     parser.add_argument("--lambda_pair", type=float, default=1.0)
-    parser.add_argument("--lambda_error", type=float, default=0.00)
+    parser.add_argument("--lambda_error", type=float, default=0.01)
     
     parser.add_argument("--num_error_bins", type=int, default=32) 
     parser.add_argument("--min_error", type=float, default=-5.0)
     parser.add_argument("--max_error", type=float, default=30.0)
     parser.add_argument("--sigma_bins", type=float, default=1.5)
 
-
-    parser.add_argument("--epochs", type=int, default=6)
+    parser.add_argument("--epochs", type=int, default=20)
     parser.add_argument("--batch_size", type=int, default=32)
     parser.add_argument("--num_workers", type=int, default=8)
     parser.add_argument("--num_layers", type=int, default=4)

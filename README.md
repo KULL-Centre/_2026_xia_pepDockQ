@@ -49,15 +49,6 @@ The extra index URLs for the `+cu121` PyTorch build and matching
 [`requirements.txt`](requirements.txt), so a single `pip install` resolves the
 full stack.
 
-Fetch the released weights (one-time):
-
-```bash
-scripts/download_weights.sh          # writes assets/model.pth
-```
-
-The script verifies the SHA-256 of the downloaded file, so it is safe to
-re-run.
-
 ---
 
 ## Inference
@@ -123,27 +114,61 @@ registered as console scripts.
 ## Training
 
 Training is driven by [`scripts/run_training.sh`](scripts/run_training.sh),
-configured by [`configs/train.env`](configs/train.env).
+configured by [`configs/train.env`](configs/train.env). Unlike the old workflow,
+the training pipeline now runs the full feature-generation stack in one place:
 
-**Prerequisites.** Before training you need the pre-computed graph features
-for every complex in your training / validation / test splits. Run steps 1–3
-of the inference pipeline once on the full set of PDBs — this produces one
-`.pt` file per structure under `<feature_dir>/graph`, the value that
-`DATA_PATH` in `configs/train.env` should point at. Example split files ship
-with the repo under [`data/`](data/README.md); their schema is documented in
-[`docs/data_format.md`](docs/data_format.md).
+1. `pepdockq.features.esmif_train` — extracts native + decoy residue metadata,
+   writes per-complex FASTA files, and computes ESM-IF embeddings for decoys.
+2. `pepdockq.features.esm` — computes ESM-2 per-chain embeddings.
+3. `pepdockq.features.dockq` — computes ground-truth DockQ values for each
+   native/decoy pair.
+4. `pepdockq.features.graph_train` — builds HeteroData training graphs and
+   writes `.pt` files under `<WORK_DIR>/features/graph`.
+5. `pepdockq.train` — trains the HGNN with the generated graph dataset.
+
+This matches the style of the inference script: all intermediate artifacts live
+under a shared working directory, with `fasta`, `info`, `esmif_embedding`,
+`esm_embedding`, `dockq`, `features`, and `log` created automatically.
+
+For the bundled demo dataset, the defaults in [`configs/train.env`](configs/train.env)
+point at:
 
 ```bash
-# Edit configs/train.env to point DATA_PATH at your graph feature directory,
-# then:
+PDB_DIR=train_data/pdb
+TRAIN_LIST=train_data/split/train.txt
+VALID_LIST=train_data/split/valid.tsv
+TEST_LIST=train_data/split/test.tsv
+WORK_DIR=train_data/work
+OUTPUT_DIR=outputs
+ZSCALE_PATH=assets/amino_acid_zscale.csv
+```
+
+A typical training run is therefore:
+
+```bash
 bash scripts/run_training.sh
 ```
 
-Any variable already set in the environment overrides the config, and extra
-CLI flags are forwarded to `pepdockq.train`:
+The repo includes a native/decoy example at `train_data/pdb/1a0n_A`, where:
+
+- `train_data/pdb/1a0n_A/1a0n_A.pdb` is the native structure;
+- `train_data/pdb/1a0n_A/decoys/*.pdb` contains the decoy structures.
+
+Because native PDB residue indices are not guaranteed to start at 1 or be
+contiguous, residue metadata is written separately for each source:
+
+- `<WORK_DIR>/info/1a0n_A.json` — native structure residue mapping
+- `<WORK_DIR>/info/1a0n_A_decoy.json` — decoy residue mapping
+
+These files are consumed by the graph builder so that native and decoy
+coordinates are matched by the correct residue index set instead of assuming the
+same numbering scheme.
+
+Any environment variable already set in the shell overrides the config, and any
+extra CLI arguments are forwarded to `pepdockq.train`:
 
 ```bash
-EPOCHS=20 bash scripts/run_training.sh --hidden_channels 128 --lambda_pair 0.5
+PDB_DIR=/path/to/pdbs WORK_DIR=/tmp/pepdockq_run bash scripts/run_training.sh
 ```
 
 Each run writes a timestamped subdirectory under `OUTPUT_DIR` containing:
@@ -175,13 +200,13 @@ pepDockQ/
 │
 ├── assets/
 │   ├── amino_acid_zscale.csv          static Z-scale descriptors
-│   └── model.pth                       ← fetched by scripts/download_weights.sh
+│   └── model.pth                       ← downloaded manually from Zenodo
 │
 ├── configs/
-│   ├── predict.env                     scripts/run_prediction.sh config
-│   └── train.env                       scripts/run_training.sh config
+│   ├── predict.env                     inference pipeline config
+│   └── train.env                       training pipeline config
 │
-├── data/                               training / valid / test split files
+├── data/                               example split files for training and validation
 │   ├── train.txt
 │   ├── valid.tsv
 │   └── test.tsv
@@ -191,30 +216,57 @@ pepDockQ/
 │   ├── data_format.md
 │   └── figures/
 │
-├── examples/                           frozen end-to-end demo
-│   ├── pdb/                            input PDB files
-│   └── prediction_results.csv          expected output
+├── examples/                           frozen inference demo
+│   ├── pdb/
+│   └── prediction_results.csv
+│
+├── outputs/                            training experiment outputs (timestamped folders)
 │
 ├── scripts/
-│   ├── download_weights.sh             fetch model.pth from Zenodo
 │   ├── run_prediction.sh               end-to-end inference driver
-│   └── run_training.sh                 training driver
+│   └── run_training.sh                 end-to-end training driver
+│
+├── train_data/                         demo training data for native + decoy complexes
+│   ├── pdb/
+│   │   ├── 1a08_C/
+│   │   ├── 1a0n_A/
+│   │   └── ...
+│   ├── split/
+│   │   ├── train.txt
+│   │   ├── valid.tsv
+│   │   └── test.tsv
+│   └── work/                          generated intermediate features
+│       ├── fasta/
+│       ├── info/
+│       ├── esmif_embedding/
+│       ├── esm_embedding/
+│       ├── dockq/
+│       ├── features/
+│       │   ├── coordinate/
+│       │   ├── distance_map/
+│       │   └── graph/
+│       └── log/
 │
 └── pepdockq/                           the installable Python package
     ├── __init__.py
-    ├── features/                       PDB → HeteroData
-    │   ├── esm.py                      step 2: ESM-2 embeddings
-    │   ├── esmif.py                    step 1: ESM-IF features
-    │   └── graph.py                    step 3: graph construction
-    ├── models/
-    │   ├── hgnn.py                     HGNN architecture
-    │   └── losses.py                   training losses
-    ├── data.py                         training-time datasets & pair samplers
+    ├── data.py                         training dataset utilities
     ├── metrics.py                      evaluation metrics
-    ├── predict.py                      step 4: inference → CSV
-    └── train.py                        training entry point
+    ├── predict.py                      inference entry point
+    ├── train.py                        training entry point
+    ├── features/                       per-stage feature-generation modules
+    │   ├── __init__.py
+    │   ├── esm.py                      step 2: ESM-2 embeddings
+    │   ├── esmif.py                    step 1: ESM-IF utilities
+    │   ├── esmif_train.py              step 1: native/decoy training feature extraction
+    │   ├── dockq.py                    step 3: DockQ ground-truth computation
+    │   ├── graph.py                    inference graph builder
+    │   ├── graph_train.py              training graph builder with native/decoy residue maps
+    │   └── ...
+    └── models/
+        ├── hgnn.py                     HGNN architecture
+        ├── losses.py                   training losses
+        └── __init__.py
 ```
-
 ---
 
 ## License

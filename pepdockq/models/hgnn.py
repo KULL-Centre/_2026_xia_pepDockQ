@@ -299,5 +299,14 @@ class HGNN(nn.Module):
         pool_cat = self.pool_norm(pool_cat)
         pred_global = self.dockq_head(pool_cat).squeeze(1).sigmoid()
 
-        return pred_global
+        pred_error = self.error_head(interact_emb)
+
+        pair_error_label = None
+        if hasattr(data['peptide', 'near', 'protein'], 'edge_label'):
+            edge_label = data['peptide', 'near', 'protein'].edge_label
+            if edge_label is not None and edge_label.numel() > 0:
+                # edge_label[:, 1] is decoy dist, edge_label[:, 0] is exp dist
+                pair_error_label = edge_label[:, 1] - edge_label[:, 0]
+
+        return pred_error, pair_error_label, pred_global
 

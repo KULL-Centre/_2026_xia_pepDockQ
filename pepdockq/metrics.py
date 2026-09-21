@@ -10,7 +10,7 @@ def compute_success_rate_sorted(
     threshold: float = 0.49,
     sort_by: str = "pred",      # "pred" or "real"
     descending: bool = True,
-    min_preds: int = 1,         # case 至少要有多少预测才计入分母
+    min_preds: int = 1,         # minimum number of predictions per case to be counted in the denominator
 ) -> dict:
     """
     Success criterion (Top-K):
@@ -67,7 +67,7 @@ def compute_success_rate_sorted(
 
 
 def classify_dockq_numpy(scores):
-    """将分数分类为整数类别：0=incorrect, 1=acceptable, 2=medium, 3=high"""
+    """Classify scores into integer categories: 0=incorrect, 1=acceptable, 2=medium, 3=high"""
     categories = np.zeros_like(scores, dtype=int)
     categories[(scores >= 0.23) & (scores < 0.49)] = 1  # acceptable
     categories[(scores >= 0.49) & (scores < 0.8)] = 2  # medium
@@ -78,21 +78,21 @@ def classify_dockq_numpy(scores):
 
 
 def calculate_accuracy_per_category_numpy(predict_array, label_array):
-    # 分类
+    # Classify
     pred_categories = classify_dockq_numpy(predict_array)
     true_categories = classify_dockq_numpy(label_array)
 
-    # 定义类别
+    # Define categories
     categories = [0, 1, 2, 3]  # 0=incorrect, 1=acceptable, 2=medium, 3=high
     correct_counts = np.zeros(len(categories), dtype=int)
     total_counts = np.zeros(len(categories), dtype=int)
 
-    # 统计每个类别的正确预测数量和总数量
+    # Count correct predictions and totals per category
     for cat in categories:
         total_counts[cat] = np.sum(true_categories == cat)
         correct_counts[cat] = np.sum((pred_categories == cat) & (true_categories == cat))
 
-    # 计算每个类别的准确性
+    # Compute per-category accuracy
     accuracy_per_category = {
         "incorrect": correct_counts[0] / total_counts[0] if total_counts[0] > 0 else 0,
         "acceptable": correct_counts[1] / total_counts[1] if total_counts[1] > 0 else 0,

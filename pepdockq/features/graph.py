@@ -29,10 +29,10 @@ three_to_one = {
 }
 
 MAX_PEPTIDE_LENGTH = 53
-AA_LIST = list("ACDEFGHIKLMNPQRSTVWYX")   # 20 个标准氨基酸 + X
+AA_LIST = list("ACDEFGHIKLMNPQRSTVWYX")   # 20 standard amino acids + X
 AA_TO_IDX = {aa: i for i, aa in enumerate(AA_LIST)}
 
-class GraphPepFeature():
+class PepDockQFeature():
     def __init__(self, pdb_dir, esm_dir, esmif_dir, info_dir, feature_dir, ncpus, zscale_path):
         self.ncpus = ncpus
         self.pocket_th = None
@@ -307,7 +307,7 @@ class GraphPepFeature():
                 edge_index = knn(mol2_X, mol1_X, k=30)
             else:
                 raise KeyError
-            pos_embeddings = torch.zeros((edge_index.shape[1], num_positional_embeddings))  # 跨链设为0
+            pos_embeddings = torch.zeros((edge_index.shape[1], num_positional_embeddings))  # set to 0 for cross-chain edges
             
 
         RBF_all, vec_all = cal_edge_attr(mol1_backbone_coords, mol1_sidechain, mol2_backbone_coords, mol2_sidechain, edge_index)
@@ -572,7 +572,7 @@ def get_protein_coordinates(pdb_path, res_info_path):
         chain_sidechain_centers = []
         
         for res in selected_residues:
-            # 去掉 water
+            # remove water
             resname = res.get_resname().strip()
             if res.id[0] == 'W':
                 continue
@@ -590,13 +590,13 @@ def get_protein_coordinates(pdb_path, res_info_path):
             sidechain_atom_coords = []
             for atom in res:
                 atom_name = atom.get_name()
-                if atom_name.startswith("H"): # 排除氢原子
+                if atom_name.startswith("H"): # skip hydrogen atoms
                     continue
-                all_atom_coords.append(atom.get_coord())  # 所有原子
-                if atom_name not in ['N', 'CA', 'C', 'O']: # 侧链原子
+                all_atom_coords.append(atom.get_coord())  # all atoms
+                if atom_name not in ['N', 'CA', 'C', 'O']: # side chain atoms
                     sidechain_atom_coords.append(atom.get_coord())
 
-            # backbone原子 (如果是非标准氨基酸或者缺失骨架原子，先用以下逻辑粗略处理一下，后续可以考虑改进)
+            # backbone atoms (for non-standard residues or missing backbone atoms, use the following rough fallback logic; may be improved later)
             n_coord = res["N"].get_coord() if 'N' in res else all_atom_coords[0]
             ca_coord = res["CA"].get_coord() if 'CA' in res else n_coord
             c_coord = res["C"].get_coord() if 'C' in res else ca_coord
@@ -608,12 +608,12 @@ def get_protein_coordinates(pdb_path, res_info_path):
                 sidechain_atom_coords.append(ca_coord)
             sidechain_atom_coords = np.vstack(sidechain_atom_coords)
 
-            # 包含侧链信息的坐标 CB，残基中心，残基侧链中心
+            # coordinates carrying side-chain info: CB, residue center, side-chain center
             cb_coord = res["CB"].get_coord() if 'CB' in res else ca_coord
             center = np.mean(all_atom_coords, axis=0)
             sidechain_center = np.mean(sidechain_atom_coords, axis=0)
 
-            # pad到chain的list中
+            # append to the chain-level lists
             chain_all_atom_coords.append(all_atom_coords)
             chain_backbone_atom_coords.append(bachbone_atom_coords)
             chain_cb_coords.append(cb_coord)
@@ -696,7 +696,7 @@ def _normalize(tensor, dim=-1):
         torch.div(tensor, torch.norm(tensor, dim=dim, keepdim=True)))
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Preprocess PDB files to extract features for GraphPep.")
+    parser = argparse.ArgumentParser(description="Preprocess PDB files to extract features for pepDockQ.")
     parser.add_argument('--pdb_dir', required=True, help='Directory containing input PDB structures.')
     parser.add_argument('--esm_dir', required=True, help='Directory containing ESM embeddings (step2 output).')
     parser.add_argument('--esmif_dir', required=True, help='Directory containing ESM-IF embeddings (step1 output).')
@@ -706,4 +706,4 @@ if __name__ == "__main__":
     parser.add_argument('--ncpus', type=int, default=4, help='Number of worker processes (default: 4).')
     args = parser.parse_args()
 
-    GraphPepFeature(args.pdb_dir, args.esm_dir, args.esmif_dir, args.info_dir, args.feature_dir, args.ncpus, args.zscale_path)
+    PepDockQFeature(args.pdb_dir, args.esm_dir, args.esmif_dir, args.info_dir, args.feature_dir, args.ncpus, args.zscale_path)

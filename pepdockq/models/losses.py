@@ -449,6 +449,9 @@ class EdgeBinnedSoftTargetLoss(nn.Module):
     def forward(self,
                 error_pred: torch.Tensor,
                 error_label: torch.Tensor) -> torch.Tensor:
+        if error_label is None or self.lambda_error == 0.0:
+            return error_pred.sum() * 0.0
+
         # Optional masking of sentinel-valued labels
         if self.ignore_value is not None:
             valid_mask = (error_label != self.ignore_value)
