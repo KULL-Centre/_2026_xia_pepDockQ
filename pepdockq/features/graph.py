@@ -1,4 +1,5 @@
 import pickle
+import csv
 import pandas as pd
 import numpy as np
 import os
@@ -6,7 +7,7 @@ import shutil
 from tqdm import tqdm
 import torch
 from torch_geometric.data import Data, HeteroData
-from Bio.PDB import *
+from Bio.PDB import PDBParser, MMCIFParser
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from scipy.spatial.distance import cdist
@@ -28,12 +29,12 @@ three_to_one = {
     "MSE": "M", "SEP": "S"
 }
 
-MAX_PEPTIDE_LENGTH = 53
 AA_LIST = list("ACDEFGHIKLMNPQRSTVWYX")   # 20 standard amino acids + X
 AA_TO_IDX = {aa: i for i, aa in enumerate(AA_LIST)}
+MAX_PEPTIDE_LENGTH = 53
 
 class PepDockQFeature():
-    def __init__(self, pdb_dir, esm_dir, esmif_dir, info_dir, feature_dir, ncpus, zscale_path):
+    def __init__(self, pdb_dir, esm_dir, esmif_dir, info_dir, feature_dir, ncpus, zscale_path, input_csv):
         self.ncpus = ncpus
         self.pocket_th = None
         self.edge_th = 10
@@ -46,6 +47,7 @@ class PepDockQFeature():
         self.esm_dir = esm_dir
         self.esmif_dir = esmif_dir
         self.info_dir = info_dir
+        self.input_csv = input_csv
 
         assert os.path.exists(self.pdb_dir), f"PDB directory not found: {self.pdb_dir}"
         assert os.path.exists(self.esm_dir), f"ESM embedding directory not found: {self.esm_dir}"
@@ -62,6 +64,8 @@ class PepDockQFeature():
 
         self.pdb_list = self.get_pdb_list()
         self.chain_id_dict, self.chain_fasta_dict, self.pdb_list = self.get_chain_list()
+        if len(self.pdb_list) == 0:
+            raise ValueError(f"No valid structures with both peptide and receptor chains found in {self.pdb_dir}")
         print(f'[INFO] The number of structures: {len(self.pdb_list)}')
 
         print('[RUN] get_coord...')
@@ -403,10 +407,11 @@ class PepDockQFeature():
         return coord
     
     def get_pdb_list(self):
-        pdb_list = []
-        for file in os.listdir(self.pdb_dir):
-            if file.endswith('.pdb'):
-                pdb_list.append(file[:-4])
+        with open(self.input_csv, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None or "decoy_id" not in reader.fieldnames:
+                raise ValueError(f"{self.input_csv} must contain a decoy_id column")
+            pdb_list = [row["decoy_id"].strip() for row in reader]
         return sorted(pdb_list)
     
     def get_chain_list(self):
@@ -417,26 +422,40 @@ class PepDockQFeature():
 
         for pdbid in tqdm(self.pdb_list):
             res_info_path = os.path.join(self.info_dir, f'{pdbid}.json')
+            if not os.path.exists(res_info_path):
+                print(f'[WARN] Residue info not found for {pdbid}, skipped.')
+                continue
             with open(res_info_path) as f:
                 res_info = json.load(f)
 
-            peptide_chains = []
-            receptor_chains = []
-            chain_fasta_dict[pdbid] = {}
+            available_chains = list(res_info["chains"].keys())
+            chain_roles = res_info.get("chain_roles", {})
+            peptide_chains = chain_roles.get("peptide", [])
+            receptor_chains = chain_roles.get("receptor", [])
 
-            for chain_id in res_info["chains"].keys():
+            if not peptide_chains or not receptor_chains:
+                raise ValueError(f"{pdbid} is missing peptide or receptor chain roles in {res_info_path}")
+
+            missing_chains = [cid for cid in peptide_chains + receptor_chains if cid not in available_chains]
+            if missing_chains:
+                raise ValueError(f"{pdbid} assigns unavailable chain(s) {missing_chains}; available chains: {available_chains}")
+
+            # for cid in peptide_chains:
+            #     seq_len = len(res_info["chains"][cid]["sequence"])
+                # if seq_len > MAX_PEPTIDE_LENGTH:
+                #     raise ValueError(f"{pdbid}: peptide chain '{cid}' exceeds {MAX_PEPTIDE_LENGTH} residues (length={seq_len})")
+            # for cid in receptor_chains:
+            #     seq_len = len(res_info["chains"][cid]["sequence"])
+                # if seq_len <= MAX_PEPTIDE_LENGTH:
+                #     raise ValueError(f"{pdbid}: receptor chain '{cid}' must exceed {MAX_PEPTIDE_LENGTH} residues (length={seq_len})")
+
+            chain_fasta_dict[pdbid] = {}
+            for chain_id in available_chains:
                 sequence = res_info["chains"][chain_id]["sequence"]
                 chain_fasta_dict[pdbid][chain_id] = sequence
-                if len(sequence) <= MAX_PEPTIDE_LENGTH:
-                    peptide_chains.append(chain_id)
-                else:
-                    receptor_chains.append(chain_id)
 
-            if peptide_chains and receptor_chains:
-                chain_id_dict[pdbid] = {'peptide': peptide_chains, 'receptor': receptor_chains}
-                selected_pdb_list.append(pdbid)
-            else:
-                print(f'[WARN] {pdbid} does not have valid peptide-receptor chains, skipped.')
+            chain_id_dict[pdbid] = {'peptide': peptide_chains, 'receptor': receptor_chains}
+            selected_pdb_list.append(pdbid)
 
         return chain_id_dict, chain_fasta_dict, selected_pdb_list
 
@@ -704,6 +723,7 @@ if __name__ == "__main__":
     parser.add_argument('--feature_dir', required=True, help='Output directory for the generated features/graphs.')
     parser.add_argument('--zscale_path', required=True, help='Path to the amino acid z-scale CSV file.')
     parser.add_argument('--ncpus', type=int, default=4, help='Number of worker processes (default: 4).')
+    parser.add_argument('--input_csv', required=True, help='CSV with decoy_id, receptor_chains, and peptide_chains.')
     args = parser.parse_args()
 
-    PepDockQFeature(args.pdb_dir, args.esm_dir, args.esmif_dir, args.info_dir, args.feature_dir, args.ncpus, args.zscale_path)
+    PepDockQFeature(args.pdb_dir, args.esm_dir, args.esmif_dir, args.info_dir, args.feature_dir, args.ncpus, args.zscale_path, args.input_csv)

@@ -19,9 +19,9 @@
 # Required environment variables:
 #   PDB_DIR      input folder containing per-complex subdirectories (e.g. train_data/pdb)
 #   WORK_DIR     working dir; all intermediate features live in its subfolders
-#   TRAIN_LIST   text file with one training PDB id per line
-#   VALID_LIST   TSV file for validation split (see docs/data_format.md)
-#   TEST_LIST    TSV file for test split, same schema as VALID_LIST
+#   TRAIN_LIST   CSV file with pdb_id, receptor_chains, peptide_chains
+#   VALID_LIST   CSV validation split, plus max_pdb_receptor_seq_identity
+#   TEST_LIST    CSV test split, same schema as VALID_LIST
 #   ZSCALE_PATH  path to the amino-acid z-scale CSV
 #   NCPUS        number of worker processes for step 4
 #
@@ -90,8 +90,6 @@ GRAPH_DIR=$FEATURE_DIR/graph
 LOG_DIR=$WORK_DIR/log
 mkdir -p "$LOG_DIR" "$DOCKQ_DIR"
 
-DOCKQ_JSON=$DOCKQ_DIR/dockq_all.json
-
 # -----------------------------------------------------------------------------
 # Step 1 — ESM-IF inverse-folding features (GPU)
 # -----------------------------------------------------------------------------
@@ -101,6 +99,7 @@ echo "[TRAIN-PIPELINE] Step 1: running features.esmif_train ..."
     --fasta_dir "$FASTA_DIR" \
     --info_dir  "$INFO_DIR" \
     --esmif_dir "$ESMIF_DIR" \
+    --input_csvs "$TRAIN_LIST" "$VALID_LIST" "$TEST_LIST" \
     2>&1 | tee "$LOG_DIR/step1_esmif.log"
 echo "[TRAIN-PIPELINE] Step 1 finished."
 
@@ -111,6 +110,7 @@ echo "[TRAIN-PIPELINE] Step 2: running features.esm ..."
 "$PYTHON" -m pepdockq.features.esm \
     --fasta_dir "$FASTA_DIR" \
     --esm_dir   "$ESM_DIR" \
+    --input_csv "$TRAIN_LIST" "$VALID_LIST" "$TEST_LIST" \
     2>&1 | tee "$LOG_DIR/step2_esm.log"
 echo "[TRAIN-PIPELINE] Step 2 finished."
 
@@ -120,7 +120,8 @@ echo "[TRAIN-PIPELINE] Step 2 finished."
 echo "[TRAIN-PIPELINE] Step 3: running features.dockq ..."
 "$PYTHON" -m pepdockq.features.dockq \
     --pdb_dir     "$PDB_DIR" \
-    --output_json "$DOCKQ_JSON" \
+    --output_dir  "$DOCKQ_DIR" \
+    --input_csvs  "$TRAIN_LIST" "$VALID_LIST" "$TEST_LIST" \
     2>&1 | tee "$LOG_DIR/step3_dockq.log"
 echo "[TRAIN-PIPELINE] Step 3 finished."
 
@@ -132,11 +133,12 @@ echo "[TRAIN-PIPELINE] Step 4: running features.graph_train ..."
     --decoy_dir   "$PDB_DIR" \
     --info_dir    "$INFO_DIR" \
     --feature_dir "$FEATURE_DIR" \
-    --dockq_json  "$DOCKQ_JSON" \
+    --dockq_dir   "$DOCKQ_DIR" \
     --zscale_path "$ZSCALE_PATH" \
     --esm_dir     "$ESM_DIR" \
     --esmif_dir   "$ESMIF_DIR" \
     --ncpus       "$NCPUS" \
+    --input_csvs  "$TRAIN_LIST" "$VALID_LIST" "$TEST_LIST" \
     2>&1 | tee "$LOG_DIR/step4_graph.log"
 echo "[TRAIN-PIPELINE] Step 4 finished."
 

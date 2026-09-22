@@ -19,9 +19,10 @@ env/
 .DS_Store
 
 # Experiment outputs
-outputs/
 runs/
-work_dir/
+inference_examples/work/
+train_examples/work/
+train_examples/outputs/
 *.log
 slurm-*.out
 slurm-*.err

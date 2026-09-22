@@ -1,4 +1,5 @@
 import argparse
+import csv
 import glob
 import json
 import os
@@ -6,17 +7,16 @@ import subprocess
 from tqdm import tqdm
 
 
-def compute_all_dockq(pdb_dir, output_json):
-    os.makedirs(os.path.dirname(output_json) or ".", exist_ok=True)
-    complex_ids = sorted([d for d in os.listdir(pdb_dir) if os.path.isdir(os.path.join(pdb_dir, d))])
-    all_dockq = {}
-
-    try:
-        from DockQ.DockQ import load_PDB, calc_DockQ
-        has_dockq_pkg = True
-    except ImportError:
-        has_dockq_pkg = False
-
+def compute_all_dockq(pdb_dir, output_dir, input_csvs):
+    os.makedirs(output_dir, exist_ok=True)
+    complex_ids = set()
+    for input_csv in input_csvs:
+        with open(input_csv, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None or "pdb_id" not in reader.fieldnames:
+                raise ValueError(f"{input_csv} must contain a pdb_id column")
+            complex_ids.update(row["pdb_id"].strip() for row in reader)
+    complex_ids = sorted(complex_ids)
     for complex_id in tqdm(complex_ids, desc="Computing ground-truth DockQ"):
         complex_dir = os.path.join(pdb_dir, complex_id)
         native_pdb = os.path.join(complex_dir, f"{complex_id}.pdb")
@@ -28,7 +28,7 @@ def compute_all_dockq(pdb_dir, output_json):
 
         decoy_dir = os.path.join(complex_dir, "decoys")
         decoy_files = sorted(glob.glob(os.path.join(decoy_dir, "*.pdb"))) if os.path.isdir(decoy_dir) else []
-        all_dockq[complex_id] = {}
+        complex_dockq = {}
 
         for decoy_pdb in decoy_files:
             fname = os.path.basename(decoy_pdb)
@@ -38,37 +38,40 @@ def compute_all_dockq(pdb_dir, output_json):
                 continue
             model_i = int(model_part)
 
-            dockq_score = 0.0
-            if has_dockq_pkg:
-                try:
-                    model_struct = load_PDB(decoy_pdb)
-                    native_struct = load_PDB(native_pdb)
-                    dockq_score = float(calc_DockQ(model_struct, native_struct)["DockQ"])
-                except Exception:
-                    dockq_score = 0.0
-            else:
-                cmd = f"DockQ {decoy_pdb} {native_pdb} --short"
-                res = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-                if res.returncode == 0:
-                    for line in res.stdout.splitlines():
-                        if "DockQ" in line:
-                            dockq_score = float(line.strip().split()[-1])
-                            break
+            result = subprocess.run(
+                ["DockQ", decoy_pdb, native_pdb, "--short"],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode != 0:
+                raise RuntimeError(
+                    f"DockQ failed for {decoy_pdb}: {result.stderr.strip() or result.stdout.strip()}"
+                )
 
-            all_dockq[complex_id][model_i] = {"dockq": dockq_score}
+            dockq_score = None
+            for line in result.stdout.splitlines():
+                if line.startswith("DockQ "):
+                    dockq_score = float(line.split()[1])
+                    break
+            if dockq_score is None:
+                raise RuntimeError(f"Could not parse DockQ score for {decoy_pdb}: {result.stdout.strip()}")
 
-    with open(output_json, "w", encoding="utf-8") as f:
-        json.dump(all_dockq, f, indent=2)
-    print(f"[INFO] DockQ scores saved to: {output_json}")
+            complex_dockq[model_i] = {"dockq": dockq_score}
+
+        output_json = os.path.join(output_dir, f"{complex_id}.json")
+        with open(output_json, "w", encoding="utf-8") as f:
+            json.dump(complex_dockq, f, indent=2)
+        print(f"[INFO] DockQ scores saved to: {output_json}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Compute DockQ scores for all decoy PDBs against native PDBs.")
     parser.add_argument("--pdb_dir", required=True, help="Input directory containing complex PDB folders.")
-    parser.add_argument("--output_json", required=True, help="Output JSON path for DockQ ground truths.")
+    parser.add_argument("--output_dir", required=True, help="Output directory for per-complex DockQ JSON files.")
+    parser.add_argument("--input_csvs", required=True, nargs="+", help="Train, validation, and test split CSV files.")
     args = parser.parse_args()
 
-    compute_all_dockq(args.pdb_dir, args.output_json)
+    compute_all_dockq(args.pdb_dir, args.output_dir, args.input_csvs)
 
 
 if __name__ == "__main__":

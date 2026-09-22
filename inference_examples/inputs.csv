@@ -1,0 +1,6 @@
+decoy_id,receptor_chains,peptide_chains
+exp1,A,B
+exp2,A,B
+1a2y_ag_C_ab_A_B_unrelaxed_rank_006_alphafold2_multimer_v3_model_3_seed_002_2024,C,A_B
+1a2y_ag_C_ab_A_B_unrelaxed_rank_013_alphafold2_multimer_v3_model_2_seed_001_2024,C,A_B
+1a2y_ag_C_ab_A_B_unrelaxed_rank_029_alphafold2_multimer_v3_model_5_seed_004_2024,C,A_B

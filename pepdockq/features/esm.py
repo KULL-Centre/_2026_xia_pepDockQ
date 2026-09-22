@@ -1,4 +1,5 @@
 import argparse
+import csv
 import os
 import esm
 import torch
@@ -32,11 +33,26 @@ def main():
     parser = argparse.ArgumentParser(description="Compute per-chain ESM2 embeddings for all FASTAs in a directory.")
     parser.add_argument("--fasta_dir", required=True, help="Directory containing .fasta files.")
     parser.add_argument("--esm_dir", required=True, help="Output directory for per-chain .pkl files.")
+    parser.add_argument("--input_csv", required=True, nargs="+", help="CSV manifest file(s) listing decoy_id or pdb_id values to process.")
     args = parser.parse_args()
 
     os.makedirs(args.esm_dir, exist_ok=True)
 
-    fasta_files = sorted(f for f in os.listdir(args.fasta_dir) if f.endswith(".fasta"))
+    pdb_ids = []
+    for input_csv in args.input_csv:
+        with open(input_csv, newline="", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            if reader.fieldnames is None:
+                raise ValueError(f"{input_csv} must contain a header row")
+            id_column = "decoy_id" if "decoy_id" in reader.fieldnames else "pdb_id"
+            if id_column not in reader.fieldnames:
+                raise ValueError(f"{input_csv} must contain a decoy_id or pdb_id column")
+            pdb_ids.extend(row[id_column].strip() for row in reader)
+
+    fasta_files = [f"{pdb_id}.fasta" for pdb_id in pdb_ids]
+    missing_fastas = [fasta_file for fasta_file in fasta_files if not os.path.isfile(os.path.join(args.fasta_dir, fasta_file))]
+    if missing_fastas:
+        raise FileNotFoundError(f"Missing FASTA file(s): {', '.join(missing_fastas)}")
     print(f"Found {len(fasta_files)} fasta files", flush=True)
 
     model, alphabet = esm.pretrained.esm2_t33_650M_UR50D()

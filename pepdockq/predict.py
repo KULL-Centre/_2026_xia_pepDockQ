@@ -73,6 +73,7 @@ def parse_argument():
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--data_path", type=str, required=True, help="Path to directory containing .pt files for prediction")
     parser.add_argument("--checkpoint", type=str, required=True, help="Path to model checkpoint (.pth)")
+    parser.add_argument("--input_csv", type=str, required=True, help="CSV with the decoy_id values to predict")
     parser.add_argument("--output", type=str, required=True, help="Path to output CSV file")
 
     args = parser.parse_args()
@@ -85,6 +86,18 @@ def parse_argument():
 def main():
     args = parse_argument()
 
+    with open(args.input_csv, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None or "decoy_id" not in reader.fieldnames:
+            raise ValueError(f"{args.input_csv} must contain a decoy_id column")
+        all_pdb_ids = [row["decoy_id"].strip() for row in reader]
+    if not all_pdb_ids or any(not pdb_id for pdb_id in all_pdb_ids):
+        raise ValueError(f"{args.input_csv} must contain non-empty decoy_id values")
+
+    missing_graphs = [pdb_id for pdb_id in all_pdb_ids if not os.path.isfile(os.path.join(args.data_path, f"{pdb_id}.pt"))]
+    if missing_graphs:
+        raise FileNotFoundError(f"Missing graph feature file(s): {', '.join(missing_graphs)}")
+
     model = HGNN(num_layers=4, hidden_channels=256,
                    features=["esm", 'zscale', 'dihedrals', 'esmif_mutation_score'],
                    heads=4, num_error_bins=32)
@@ -92,12 +105,7 @@ def main():
     model.load_state_dict(checkpoint)
     model.to(args.device)
 
-    all_pdb_ids = sorted({
-        os.path.splitext(entry.name)[0]
-        for entry in os.scandir(args.data_path)
-        if entry.is_file() and entry.name.endswith('.pt')
-    })
-    print(f"[INFO] Found {len(all_pdb_ids)} unique PDB IDs in {args.data_path}")
+    print(f"[INFO] Predicting {len(all_pdb_ids)} PDB IDs from {args.input_csv}")
 
     decoy_results = run_prediction(model, all_pdb_ids, args, 'all')
 

@@ -24,6 +24,7 @@ from pepdockq.metrics import (
     compute_success_rate_sorted,
 )
 import csv
+from pepdockq.features.train_inputs import read_split_pdb_ids
 
 DOCKQ_THRESHOLDS = [0.23, 0.49, 0.8]
 
@@ -396,18 +397,16 @@ def cal_topk_dockq(pred, dockq, k_list):
     return  topk_dockq_list
 
 
-def load_all_pdbs_with_similarity(tsv_path):
-    """Load all PDB IDs with their similarity values from TSV (no filtering)."""
+def load_all_pdbs_with_similarity(csv_path):
+    """Load validation/test PDB IDs with their receptor similarity values."""
     pdb_sim = {}
-    with open(tsv_path, newline='', encoding='utf-8') as f:
-        reader = csv.DictReader(f, delimiter='\t')
-        for row in reader:
-            try:
-                pdb_sim[row['pep_id']] = {
-                    'max_pdb_receptor_seq_identity': float(row['max_pdb_receptor_seq_identity']),
-                }
-            except (ValueError, KeyError):
-                continue
+    for row in read_split_pdb_ids(csv_path, require_similarity=True):
+        try:
+            pdb_sim[row['pdb_id'].strip()] = {
+                'max_pdb_receptor_seq_identity': float(row['max_pdb_receptor_seq_identity']),
+            }
+        except ValueError as exc:
+            raise ValueError(f"Invalid max_pdb_receptor_seq_identity in {csv_path}: {row}") from exc
 
     _bins = [(0.0, 0.4), (0.4, 0.8), (0.8, 1.01)]
     _bin_labels = ['0.0-0.4', '0.4-0.8', '0.8-1.0']
@@ -449,12 +448,11 @@ def parse_arguments():
                         help="Directory of pre-computed graph .pt features (output of collect_inputs.py, "
                              "typically <feature_dir>/graph)")
     parser.add_argument("--train_list", dest="train_list_path", type=str, required=True,
-                        help="Text file with one training PDB id per line")
+                        help="CSV file with pdb_id, receptor_chains, and peptide_chains columns")
     parser.add_argument("--valid_list", dest="valid_list_path", type=str, required=True,
-                        help="TSV file for validation split with columns pep_id, max_receptor_seq_identity, "
-                             "max_pdb_receptor_seq_identity (see docs/data_format.md)")
+                            help="CSV file for validation split with pdb_id and max_pdb_receptor_seq_identity columns")
     parser.add_argument("--test_list", dest="test_list_path", type=str, required=True,
-                        help="TSV file for test split, same schema as --valid_list")
+                        help="CSV file for test split, same schema as --valid_list")
     parser.add_argument("--output_dir", type=str, default="outputs",
                         help="Root directory for experiment outputs (checkpoints, logs, tensorboard)")
 
@@ -462,8 +460,7 @@ def parse_arguments():
 
 
 def _read_list(path):
-    with open(path, 'r') as f:
-        return f.read().splitlines()
+    return [row['pdb_id'].strip() for row in read_split_pdb_ids(path)]
 
 
 def load_splits(args):

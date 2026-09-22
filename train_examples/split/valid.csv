@@ -1,0 +1,4 @@
+pdb_id,receptor_chains,peptide_chains,max_pdb_receptor_seq_identity
+7f6g_L,A,L,0.939
+8h0p_L,R,L,0.363
+8hbd_L,R,L,0.654

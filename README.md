@@ -55,16 +55,17 @@ full stack.
 
 The four inference stages are wired together by
 [`scripts/run_prediction.sh`](scripts/run_prediction.sh) and configured by
-[`configs/predict.env`](configs/predict.env). Every knob has a default that
-points at the frozen example under [`examples/`](examples/) and the released
-checkpoint under [`assets/`](assets/), so out of the box:
+[`configs/predict.env`](configs/predict.env). Every run also requires an input
+manifest, which maps each PDB file to its receptor and peptide chains. The
+defaults point at the frozen example under [`examples/`](examples/) and the
+released checkpoint under [`assets/`](assets/), so out of the box:
 
 ```bash
 bash scripts/run_prediction.sh
 ```
 
-runs the two PDB files under [`examples/pdb/`](examples/pdb/) end-to-end and
-writes predictions to `examples/prediction_results.csv`.
+runs the structures listed in [`examples/inputs.csv`](examples/inputs.csv)
+end-to-end and writes predictions to `examples/prediction_results.csv`.
 
 | Step | Module | Where it runs |
 |------|--------|---------------|
@@ -73,14 +74,26 @@ writes predictions to `examples/prediction_results.csv`.
 | 3    | [`pepdockq.features.graph`](pepdockq/features/graph.py) | CPU |
 | 4    | [`pepdockq.predict`](pepdockq/predict.py)               | GPU |
 
+The input CSV must contain `decoy_id`, `receptor_chains`, and `peptide_chains`:
+
+```csv
+decoy_id,receptor_chains,peptide_chains
+complex_001,A,B_C
+```
+
+`decoy_id` must match `<PDB_DIR>/<decoy_id>.pdb`. Use `_` to separate multiple
+chain IDs. The pipeline rejects missing PDBs or chains and empty or overlapping
+receptor/peptide groups during input processing. The graph builder uses the
+manifest-provided chain roles rather than inferring them from PDB filenames.
+
 To predict on your own data, edit [`configs/predict.env`](configs/predict.env)
-— it exposes the input folder, working directory, output CSV path, checkpoint,
-Z-scale asset, and stage-3 worker count. Any variable already set in the
-environment overrides the config, so a one-off run without editing the file
-looks like:
+— it exposes the input folder, input CSV, working directory, output CSV,
+checkpoint, Z-scale asset, and stage-3 worker count. Any variable already set
+in the environment overrides the config, so a one-off run without editing the
+file looks like:
 
 ```bash
-PDB_DIR=/path/to/pdbs OUTPUT=/tmp/pred.csv bash scripts/run_prediction.sh
+PDB_DIR=/path/to/pdbs INPUT_CSV=/path/to/inputs.csv OUTPUT=/tmp/pred.csv bash scripts/run_prediction.sh
 ```
 
 Intermediate features (`fasta`, `info`, `esm_embedding`, `esmif_embedding`,
@@ -99,11 +112,11 @@ decoy_id,pred_score
 Each stage is a standalone entry point:
 
 ```bash
-python -m pepdockq.features.esmif  --pdb_dir ... --fasta_dir ... --info_dir ... --esmif_dir ...
-python -m pepdockq.features.esm    --fasta_dir ... --esm_dir ...
+python -m pepdockq.features.esmif  --pdb_dir ... --input_csv ... --fasta_dir ... --info_dir ... --esmif_dir ...
+python -m pepdockq.features.esm    --fasta_dir ... --input_csv ... --esm_dir ...
 python -m pepdockq.features.graph  --pdb_dir ... --esm_dir ... --esmif_dir ... \
-                                    --info_dir ... --feature_dir ... --zscale_path ... --ncpus 4
-python -m pepdockq.predict         --data_path ... --checkpoint ... --output ...
+                                    --input_csv ... --info_dir ... --feature_dir ... --zscale_path ... --ncpus 4
+python -m pepdockq.predict         --data_path ... --checkpoint ... --input_csv ... --output ...
 ```
 
 After `pip install -e .`, `pepdockq-predict` and `pepdockq-train` are also
@@ -114,8 +127,7 @@ registered as console scripts.
 ## Training
 
 Training is driven by [`scripts/run_training.sh`](scripts/run_training.sh),
-configured by [`configs/train.env`](configs/train.env). Unlike the old workflow,
-the training pipeline now runs the full feature-generation stack in one place:
+configured by [`configs/train.env`](configs/train.env). Benchmark dataset used in paper can be download from https://zenodo.org/records/22883580.
 
 1. `pepdockq.features.esmif_train` — extracts native + decoy residue metadata,
    writes per-complex FASTA files, and computes ESM-IF embeddings for decoys.
@@ -135,13 +147,43 @@ point at:
 
 ```bash
 PDB_DIR=train_data/pdb
-TRAIN_LIST=train_data/split/train.txt
-VALID_LIST=train_data/split/valid.tsv
-TEST_LIST=train_data/split/test.tsv
+TRAIN_LIST=train_data/split/train.csv
+VALID_LIST=train_data/split/valid.csv
+TEST_LIST=train_data/split/test.csv
 WORK_DIR=train_data/work
 OUTPUT_DIR=outputs
 ZSCALE_PATH=assets/amino_acid_zscale.csv
 ```
+
+All three split files are CSV manifests. `train.csv` must contain:
+
+```csv
+pdb_id,receptor_chains,peptide_chains
+1a0n_A,B,A
+```
+
+`valid.csv` and `test.csv` require the same chain-role columns plus the
+receptor sequence-identity value used for evaluation bins:
+
+```csv
+pdb_id,receptor_chains,peptide_chains,max_pdb_receptor_seq_identity
+7f6g_L,A,L,0.939
+```
+
+`pdb_id` must match a directory at `<PDB_DIR>/<pdb_id>/`, containing the native
+PDB (`<pdb_id>.pdb` or `complex.pdb`) and its `decoys/` directory. Use `_` to
+separate multiple chain IDs. Before feature generation, the pipeline rejects
+missing PDB directories, missing native structures, empty or overlapping chain
+groups, and receptor or peptide chains that are absent from the native or decoy
+structures. The selected chain roles are written to the generated native and
+decoy JSON metadata and are used throughout graph construction.
+
+The bundled graph representation is configured for peptide-protein complexes:
+peptide chains must contain at most 53 residues and receptor chains must exceed
+53 residues. To train a different modality or use different length criteria,
+manually update `MAX_PEPTIDE_LENGTH` and its paired checks in
+[`pepdockq/features/graph.py`](pepdockq/features/graph.py) and
+[`pepdockq/features/graph_train.py`](pepdockq/features/graph_train.py).
 
 A typical training run is therefore:
 
@@ -200,16 +242,16 @@ pepDockQ/
 │
 ├── assets/
 │   ├── amino_acid_zscale.csv          static Z-scale descriptors
-│   └── model.pth                       ← downloaded manually from Zenodo
+│   └── model.pth                      
 │
 ├── configs/
 │   ├── predict.env                     inference pipeline config
 │   └── train.env                       training pipeline config
 │
 ├── data/                               example split files for training and validation
-│   ├── train.txt
-│   ├── valid.tsv
-│   └── test.tsv
+│   ├── train.csv
+│   ├── valid.csv
+│   └── test.csv
 │
 ├── docs/
 │   ├── architecture.md
@@ -232,9 +274,9 @@ pepDockQ/
 │   │   ├── 1a0n_A/
 │   │   └── ...
 │   ├── split/
-│   │   ├── train.txt
-│   │   ├── valid.tsv
-│   │   └── test.tsv
+│   │   ├── train.csv
+│   │   ├── valid.csv
+│   │   └── test.csv
 │   └── work/                          generated intermediate features
 │       ├── fasta/
 │       ├── info/

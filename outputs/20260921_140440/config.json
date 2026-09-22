@@ -1,0 +1,55 @@
+{
+    "features": [
+        "esm",
+        "zscale",
+        "dihedrals",
+        "esmif_mutation_score"
+    ],
+    "huber_delta": 0.1,
+    "lambda_pair": 1.0,
+    "lambda_error": 0.01,
+    "num_error_bins": 32,
+    "min_error": -5.0,
+    "max_error": 30.0,
+    "sigma_bins": 1.5,
+    "epochs": 6,
+    "batch_size": 32,
+    "num_workers": 8,
+    "num_layers": 4,
+    "hidden_channels": 256,
+    "heads": 4,
+    "lr": 5e-05,
+    "device": "cuda",
+    "data_path": "train_data/work/features/graph",
+    "train_list_path": "train_data/split/train.csv",
+    "valid_list_path": "train_data/split/valid.csv",
+    "test_list_path": "train_data/split/test.csv",
+    "output_dir": "outputs",
+    "train_list": [
+        "1a08_C",
+        "1a0n_A",
+        "1a2y"
+    ],
+    "valid_sim_dict": {
+        "0.0-0.4": [
+            "8h0p_L"
+        ],
+        "0.4-0.8": [
+            "8hbd_L"
+        ],
+        "0.8-1.0": [
+            "7f6g_L"
+        ]
+    },
+    "test_sim_dict": {
+        "0.0-0.4": [
+            "8jjp_L"
+        ],
+        "0.4-0.8": [
+            "8w8x_L"
+        ],
+        "0.8-1.0": [
+            "7h1h_A"
+        ]
+    }
+}

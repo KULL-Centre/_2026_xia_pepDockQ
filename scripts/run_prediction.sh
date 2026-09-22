@@ -14,11 +14,12 @@
 # stage-specific batch scripts.
 #
 # Usage:
-#   PDB_DIR=... WORK_DIR=... OUTPUT=... NCPUS=... \
+#   PDB_DIR=... INPUT_CSV=... WORK_DIR=... OUTPUT=... NCPUS=... \
 #   CHECKPOINT=... ZSCALE_PATH=... [PYTHON=...] scripts/run_pipeline.sh
 #
 # Required environment variables:
 #   PDB_DIR      input folder of PDB files
+#   INPUT_CSV    CSV mapping PDB IDs to receptor and peptide chains
 #   WORK_DIR     working dir; all intermediate features live in its subfolders
 #   OUTPUT       path to the final prediction CSV
 #   NCPUS        number of worker processes for step 3
@@ -53,6 +54,7 @@ fi
 # Required parameters
 # -----------------------------------------------------------------------------
 : "${PDB_DIR:?Set PDB_DIR (input folder of PDB files)}"
+: "${INPUT_CSV:?Set INPUT_CSV (CSV specifying PDB IDs and chain roles)}"
 : "${WORK_DIR:?Set WORK_DIR (working dir for intermediate features)}"
 : "${OUTPUT:?Set OUTPUT (path to the final prediction CSV)}"
 : "${NCPUS:?Set NCPUS (number of worker processes for step 3)}"
@@ -81,6 +83,7 @@ echo "[PIPELINE] Step 1: running features.esmif ..."
     --fasta_dir "$FASTA_DIR" \
     --info_dir  "$INFO_DIR" \
     --esmif_dir "$ESMIF_DIR" \
+    --input_csv "$INPUT_CSV" \
     2>&1 | tee "$LOG_DIR/step1_esmif.log"
 echo "[PIPELINE] Step 1 finished."
 
@@ -91,6 +94,7 @@ echo "[PIPELINE] Step 2: running features.esm ..."
 "$PYTHON" -m pepdockq.features.esm \
     --fasta_dir "$FASTA_DIR" \
     --esm_dir   "$ESM_DIR" \
+    --input_csv "$INPUT_CSV" \
     2>&1 | tee "$LOG_DIR/step2_esm.log"
 echo "[PIPELINE] Step 2 finished."
 
@@ -106,6 +110,7 @@ echo "[PIPELINE] Step 3: running features.graph ..."
     --feature_dir "$FEATURE_DIR" \
     --zscale_path "$ZSCALE_PATH" \
     --ncpus       "$NCPUS" \
+    --input_csv   "$INPUT_CSV" \
     2>&1 | tee "$LOG_DIR/step3_graph.log"
 echo "[PIPELINE] Step 3 finished."
 
@@ -116,6 +121,7 @@ echo "[PIPELINE] Step 4: running predict ..."
 "$PYTHON" -m pepdockq.predict \
     --data_path  "$GRAPH_DIR" \
     --checkpoint "$CHECKPOINT" \
+    --input_csv  "$INPUT_CSV" \
     --output     "$OUTPUT" \
     2>&1 | tee "$LOG_DIR/step4_predict.log"
 echo "[PIPELINE] Step 4 finished. Predictions written to: $OUTPUT"

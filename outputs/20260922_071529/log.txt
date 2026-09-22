@@ -1,0 +1,293 @@
+[INFO] Logging to outputs/20260922_071529/log.txt
+Feature hidden dims: {'esm': 128, 'esmif_mutation_score': 88, 'zscale': 8, 'dihedrals': 32}
+[RUN] Load dataset... 
+After load data, the number of pdbs is 3, the number of samples is 66
+Done!
+[EdgeBinnedSoftTargetLoss] num_bins=32 range=[-5.00, 30.00] bin_width=1.094 sigma_bins=1.5 sigma_physical=1.641
+[INFO] Optimizer initialized with learning rate 5e-05
+Epoch 0/6
+Train | reg: 0.3162 pair: 0.0093 total: 0.3949 local: 0.0694 
+-----------evaluate on bin: 0.0-0.4 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 35
+Done!
+0.0-0.4-valid | local: 0.0345 global: 0.0503 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=0.800 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=0.800 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 39
+Done!
+0.0-0.4-test | local: 0.0346 global: 0.0500 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=0.667 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=0.667 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+-----------evaluate on bin: 0.4-0.8 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 54
+Done!
+0.4-0.8-valid | local: 0.0346 global: 0.0549 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=0.407 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=0.407 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 47
+Done!
+0.4-0.8-test | local: 0.0346 global: 0.0537 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=0.489 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=0.489 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+-----------evaluate on bin: 0.8-1.0 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 10
+Done!
+0.8-1.0-valid | local: 0.0344 global: 0.0463 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=0.900 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=0.900 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 24
+Done!
+0.8-1.0-test | local: 0.0347 global: 0.0564 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=0.208 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=0.208 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Epoch 1/6
+Train | reg: 0.0949 pair: 0.0057 total: 0.1698 local: 0.0692 
+-----------evaluate on bin: 0.0-0.4 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 35
+Done!
+0.0-0.4-valid | local: 0.0345 global: 0.0141 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 39
+Done!
+0.0-0.4-test | local: 0.0346 global: 0.0138 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+-----------evaluate on bin: 0.4-0.8 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 54
+Done!
+0.4-0.8-valid | local: 0.0345 global: 0.0157 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 47
+Done!
+0.4-0.8-test | local: 0.0345 global: 0.0148 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+-----------evaluate on bin: 0.8-1.0 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 10
+Done!
+0.8-1.0-valid | local: 0.0342 global: 0.0124 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 24
+Done!
+0.8-1.0-test | local: 0.0343 global: 0.0149 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Epoch 2/6
+Train | reg: 0.0325 pair: 0.0058 total: 0.1072 local: 0.0689 
+-----------evaluate on bin: 0.0-0.4 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 35
+Done!
+0.0-0.4-valid | local: 0.0344 global: 0.0059 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 39
+Done!
+0.0-0.4-test | local: 0.0344 global: 0.0058 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+-----------evaluate on bin: 0.4-0.8 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 54
+Done!
+0.4-0.8-valid | local: 0.0344 global: 0.0065 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 47
+Done!
+0.4-0.8-test | local: 0.0344 global: 0.0062 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+-----------evaluate on bin: 0.8-1.0 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 10
+Done!
+0.8-1.0-valid | local: 0.0339 global: 0.0052 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 24
+Done!
+0.8-1.0-test | local: 0.0340 global: 0.0060 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Epoch 3/6
+Train | reg: 0.0156 pair: 0.0030 total: 0.0872 local: 0.0685 
+-----------evaluate on bin: 0.0-0.4 -----------
+After load eval data, the number of pdbs is 1, the number of samples is 35
+Done!
+0.0-0.4-valid | local: 0.0342 global: 0.0033 pdb_num: 1 | dockq: best=0.000 top1=0.000 top3=0.000 top5=0.000 | avg corr: spear=0.000 pear=0.000
+overall corr: spear=nan pear=nan | overall accuracy: incorrect=1.000 acceptable=0.000 medium=0.000 high=0.000
+Success Rate on th=0.23: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.49: top1=0.00% top3=0.00% top5=0.00%
+Success Rate on th=0.80: top1=0.00% top3=0.00% top5=0.00%
+Using provided pDockQ thresholds (from validation):
+  DockQ>=0.23 -> pDockQ threshold=0.23
+  DockQ>=0.49 -> pDockQ threshold=0.49
+  DockQ>=0.80 -> pDockQ threshold=0.80
+Binary metrics @ dockq_th=0.23 pdockq_th=0.23: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.49 pdockq_th=0.49: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+Binary metrics @ dockq_th=0.80 pdockq_th=0.80: recall=0.000 precision=0.000 specificity=1.000 f=0.000 mcc=0.000 auroc=0.000 auprc=0.000
+After load eval data, the number of pdbs is 1, the number of samples is 39
+Done!

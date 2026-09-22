@@ -1,4 +1,5 @@
 import argparse
+import csv
 import json
 import os
 import pickle
@@ -234,60 +235,116 @@ def write_fasta(sequences, fasta_output, pdb_id):
             f.write(f">{chain_id}\n{seq}\n")
 
 
+def read_prediction_inputs(input_csv, pdb_dir):
+    """Validate the prediction manifest before loading an ESM model."""
+    required_columns = {"decoy_id", "receptor_chains", "peptide_chains"}
+    with open(input_csv, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        if reader.fieldnames is None or not required_columns.issubset(reader.fieldnames):
+            raise ValueError(
+                f"{input_csv} must contain columns: decoy_id,receptor_chains,peptide_chains"
+            )
+        rows = list(reader)
+
+    if not rows:
+        raise ValueError(f"{input_csv} does not contain any prediction inputs")
+
+    inputs = []
+    seen_ids = set()
+    for row_number, row in enumerate(rows, start=2):
+        pdb_id = row["decoy_id"].strip()
+        receptor_chains = [chain.strip() for chain in row["receptor_chains"].split("_") if chain.strip()]
+        peptide_chains = [chain.strip() for chain in row["peptide_chains"].split("_") if chain.strip()]
+        if not pdb_id or not receptor_chains or not peptide_chains:
+            raise ValueError(f"{input_csv}:{row_number} requires decoy_id, receptor_chains, and peptide_chains")
+        if pdb_id in seen_ids:
+            raise ValueError(f"{input_csv}:{row_number} duplicates decoy_id '{pdb_id}'")
+        if os.path.basename(pdb_id) != pdb_id or pdb_id.endswith(".pdb"):
+            raise ValueError(f"{input_csv}:{row_number} decoy_id must be a PDB filename stem, not a path")
+        overlap = set(receptor_chains) & set(peptide_chains)
+        if overlap:
+            raise ValueError(f"{input_csv}:{row_number} assigns chain(s) {sorted(overlap)} to both receptor and peptide")
+        pdb_path = os.path.join(pdb_dir, f"{pdb_id}.pdb")
+        if not os.path.isfile(pdb_path):
+            raise FileNotFoundError(f"{input_csv}:{row_number} PDB file not found: {pdb_path}")
+        inputs.append({
+            "pdb_id": pdb_id,
+            "pdb_path": pdb_path,
+            "receptor": receptor_chains,
+            "peptide": peptide_chains,
+        })
+        seen_ids.add(pdb_id)
+    return inputs
+
+
 def batch_process_pdb_folder(
     pdb_dir,
     fasta_dir,
     info_dir,
     esmif_dir,
+    input_csv,
 ):
-    pdb_files = sorted([f for f in os.listdir(pdb_dir) if f.endswith(".pdb")])
-    if not pdb_files:
-        print(f"No PDB files found in {pdb_dir}")
-        return
+    prediction_inputs = read_prediction_inputs(input_csv, pdb_dir)
 
     os.makedirs(fasta_dir, exist_ok=True)
     os.makedirs(info_dir, exist_ok=True)
     os.makedirs(esmif_dir, exist_ok=True)
 
+    pending_inputs = []
+    for prediction_input in prediction_inputs:
+        pdb_id = prediction_input["pdb_id"]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            preprocessed = os.path.join(tmpdir, "preprocessed.pdb")
+            modified_occupancy(prediction_input["pdb_path"], preprocessed)
+            structure = load_structure(preprocessed)
+            json_data, sequences = load_residue_info(structure, f"{pdb_id}.pdb")
+
+        available_chains = set(sequences)
+        requested_chains = prediction_input["receptor"] + prediction_input["peptide"]
+        missing_chains = [chain for chain in requested_chains if chain not in available_chains]
+        if missing_chains:
+            raise ValueError(
+                f"{pdb_id}: requested chain(s) {missing_chains} are absent; available chains: {sorted(available_chains)}"
+            )
+
+        json_data["chain_roles"] = {
+            "receptor": prediction_input["receptor"],
+            "peptide": prediction_input["peptide"],
+        }
+        with open(os.path.join(info_dir, f"{pdb_id}.json"), "w", encoding="utf-8") as f:
+            json.dump(json_data, f, indent=2)
+        write_fasta(sequences, os.path.join(fasta_dir, f"{pdb_id}.fasta"), pdb_id)
+
+        esmif_output = os.path.join(esmif_dir, f"{pdb_id}.pkl")
+        if not os.path.exists(esmif_output):
+            prediction_input["sequences"] = sequences
+            pending_inputs.append(prediction_input)
+
+    if not pending_inputs:
+        print("All requested ESM-IF features already exist.")
+        return
+
     model, alphabet = load_esmif_model()
 
-    for pdb_fname in tqdm(pdb_files):
-        pdb_id = os.path.splitext(pdb_fname)[0]
-        raw_pdb_path = os.path.join(pdb_dir, pdb_fname)
-        fasta_output = os.path.join(fasta_dir, pdb_id + ".fasta")
-        json_output = os.path.join(info_dir, pdb_id + ".json")
-        esmif_output = os.path.join(esmif_dir, pdb_id + ".pkl")
-
-        if os.path.exists(esmif_output):
-            print(f"Skipping {pdb_fname} since ESM-IF output already exists.")
-            continue
-
-        print(f"Processing {pdb_fname} ...")
+    for prediction_input in tqdm(pending_inputs, desc="ESM-IF features"):
+        pdb_id = prediction_input["pdb_id"]
+        print(f"Processing {pdb_id}.pdb ...")
         try:
             with tempfile.TemporaryDirectory() as tmpdir:
                 preprocessed = os.path.join(tmpdir, "preprocessed.pdb")
-                modified_occupancy(raw_pdb_path, preprocessed)
-
-                structure = load_structure(preprocessed)
-                json_data, sequences = load_residue_info(structure, pdb_fname)
-
-                with open(json_output, "w", encoding="utf-8") as f:
-                    json.dump(json_data, f, indent=2)
-
-                write_fasta(sequences, fasta_output, pdb_id)
-
-                chain_ids = list(sequences.keys())
+                modified_occupancy(prediction_input["pdb_path"], preprocessed)
+                sequences = prediction_input["sequences"]
+                chain_ids = list(sequences)
                 complex_reps = ext_complex_reps(model, alphabet, preprocessed, chain_ids, sequences)
                 monomer_reps = {
                     chain_id: ext_single_chain_rep(model, alphabet, preprocessed, chain_id, sequences)
                     for chain_id in chain_ids
                 }
 
-            with open(esmif_output, "wb") as f:
+            with open(os.path.join(esmif_dir, f"{pdb_id}.pkl"), "wb") as f:
                 pickle.dump({"multimer": complex_reps, "monomer": monomer_reps}, f)
         except Exception as e:
-            print(f"  ERROR processing {pdb_fname}: {e}")
-            continue
+            raise RuntimeError(f"Error processing {pdb_id}.pdb: {e}") from e
 
 
 def load_esmif_model():
@@ -346,6 +403,7 @@ def main():
     parser.add_argument("--fasta_dir", required=True, help="Output folder for FASTA files.")
     parser.add_argument("--info_dir", required=True, help="Output folder for residue_info JSON files.")
     parser.add_argument("--esmif_dir", required=True, help="Output folder for ESM-IF .pkl files.")
+    parser.add_argument("--input_csv", required=True, help="CSV with decoy_id, receptor_chains, and peptide_chains.")
 
     args = parser.parse_args()
 
@@ -354,6 +412,7 @@ def main():
         fasta_dir=args.fasta_dir,
         info_dir=args.info_dir,
         esmif_dir=args.esmif_dir,
+        input_csv=args.input_csv,
     )
 
 

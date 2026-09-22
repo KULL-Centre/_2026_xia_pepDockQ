@@ -1,4 +1,5 @@
 import argparse
+from pepdockq.features.train_inputs import read_training_inputs
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 import math
@@ -29,9 +30,9 @@ three_to_one = {
     "MSE": "M", "SEP": "S",
 }
 
-MAX_PEPTIDE_LENGTH = 53
 AA_LIST = list("ACDEFGHIKLMNPQRSTVWYX")
 AA_TO_IDX = {aa: i for i, aa in enumerate(AA_LIST)}
+MAX_PEPTIDE_LENGTH = 53
 
 
 class PepDockQTrainFeature:
@@ -46,7 +47,7 @@ class PepDockQTrainFeature:
         self,
         decoy_dir: str,
         feature_dir: str,
-        dockq_json: str,
+        dockq_dir: str,
         zscale_path: str,
         ncpus: int = 8,
         info_dir: str = None,
@@ -55,6 +56,7 @@ class PepDockQTrainFeature:
         edge_th: float = 10.0,
         sidechain_type: str = "sc",
         rep_atom: str = "sc",
+        input_csvs: list = None,
     ):
         self.decoy_dir = decoy_dir
         self.feature_dir = feature_dir
@@ -63,6 +65,7 @@ class PepDockQTrainFeature:
         self.edge_type = "radius"
         self.sidechain_type = sidechain_type
         self.rep_atom = rep_atom
+        self.input_csvs = input_csvs
 
         self.info_dir = info_dir or os.path.join(feature_dir, "info")
         self.esm_dir = esm_dir or os.path.join(feature_dir, "esm_embedding")
@@ -76,10 +79,18 @@ class PepDockQTrainFeature:
         os.makedirs(self.data_path, exist_ok=True)
 
         self.AA_feat_dict = self.load_AA_df(zscale_path)
-        self.dockq_dict = self.load_all_dockq(dockq_json)
 
-        self.pdb_list = sorted(list(self.dockq_dict.keys()))
+        if not self.input_csvs:
+            raise ValueError("input_csvs is required for training graph construction")
+        self.manifest_inputs = read_training_inputs(self.input_csvs, self.decoy_dir)
+        self.dockq_dict = self.load_all_dockq(dockq_dir, self.manifest_inputs)
+        missing_dockq = sorted(set(self.manifest_inputs) - set(self.dockq_dict))
+        if missing_dockq:
+            raise ValueError(f"DockQ scores missing for manifest PDB ID(s): {missing_dockq}")
+        self.pdb_list = sorted(self.manifest_inputs)
         self.chain_id_dict, self.chain_fasta_dict, self.pdb_list = self.get_chain_list()
+        if len(self.pdb_list) == 0:
+            raise ValueError(f"No valid structures with both peptide and receptor chains found in {self.decoy_dir}")
         print(f"[INFO] Valid structures for training: {len(self.pdb_list)}")
 
         print("[RUN] Step 1/3: Computing coordinates (exp & decoys)...")
@@ -92,12 +103,14 @@ class PepDockQTrainFeature:
         self.cal_multiprocess(self.process_graphs, max_workers=self.ncpus)
         print("[INFO] Finished processing all training structures.")
 
-    def load_all_dockq(self, dockq_path: str) -> dict:
-        with open(dockq_path, "r", encoding="utf-8") as f:
-            raw = json.load(f)
-
+    def load_all_dockq(self, dockq_dir: str, pdb_ids) -> dict:
         dockq_dict = {}
-        for pdb_id, model_dict in raw.items():
+        for pdb_id in pdb_ids:
+            dockq_path = os.path.join(dockq_dir, f"{pdb_id}.json")
+            if not os.path.isfile(dockq_path):
+                continue
+            with open(dockq_path, "r", encoding="utf-8") as f:
+                model_dict = json.load(f)
             dockq_dict[pdb_id] = {}
             for model_i, info in model_dict.items():
                 if isinstance(info, dict):
@@ -145,19 +158,26 @@ class PepDockQTrainFeature:
             else:
                 pred_res_info = exp_res_info
 
-            if "_" in pdb_id:
-                pep_chain_list = [pdb_id.split("_")[1]]
-            else:
-                pep_chain_list = [
-                    cid for cid, cinfo in pred_res_info["chains"].items()
-                    if len(cinfo["sequence"]) <= MAX_PEPTIDE_LENGTH
-                ]
             chain_ids = list(pred_res_info["chains"].keys())
-            rec_chain_list = [cid for cid in chain_ids if cid not in pep_chain_list]
+            chain_roles = exp_res_info.get("chain_roles", {})
+            pep_chain_list = chain_roles.get("peptide", [])
+            rec_chain_list = chain_roles.get("receptor", [])
 
             if not pep_chain_list or not rec_chain_list:
-                print(f"[WARN] No valid peptide/receptor chains for {pdb_id}, skipping...")
-                continue
+                raise ValueError(f"{pdb_id} is missing peptide or receptor chain roles in {exp_res_info_fpath}")
+
+            missing_chains = [cid for cid in pep_chain_list + rec_chain_list if cid not in chain_ids]
+            if missing_chains:
+                raise ValueError(f"{pdb_id} assigns unavailable chain(s) {missing_chains}; available chains: {chain_ids}")
+
+            # for cid in pep_chain_list:
+            #     seq_len = len(pred_res_info["chains"][cid]["sequence"])
+                # if seq_len > MAX_PEPTIDE_LENGTH:
+                #     raise ValueError(f"{pdb_id}: peptide chain '{cid}' exceeds {MAX_PEPTIDE_LENGTH} residues (length={seq_len})")
+            # for cid in rec_chain_list:
+            #     seq_len = len(pred_res_info["chains"][cid]["sequence"])
+                # if seq_len <= MAX_PEPTIDE_LENGTH:
+                #     raise ValueError(f"{pdb_id}: receptor chain '{cid}' must exceed {MAX_PEPTIDE_LENGTH} residues (length={seq_len})")
 
             match_flag = True
             for chain_id in pep_chain_list + rec_chain_list:
@@ -167,12 +187,13 @@ class PepDockQTrainFeature:
                     match_flag = False
                     break
 
-            if match_flag:
-                selected_pdb_list.append(pdb_id)
-                chain_id_dict[pdb_id] = {"peptide": pep_chain_list, "receptor": rec_chain_list}
-                chain_fasta_dict[pdb_id] = {}
-                for cid in pep_chain_list + rec_chain_list:
-                    chain_fasta_dict[pdb_id][cid] = pred_res_info["chains"][cid]["sequence"]
+            if not match_flag:
+                raise ValueError(f"{pdb_id}: native and decoy chain sequences do not have matching lengths")
+            selected_pdb_list.append(pdb_id)
+            chain_id_dict[pdb_id] = {"peptide": pep_chain_list, "receptor": rec_chain_list}
+            chain_fasta_dict[pdb_id] = {}
+            for cid in pep_chain_list + rec_chain_list:
+                chain_fasta_dict[pdb_id][cid] = pred_res_info["chains"][cid]["sequence"]
 
         return chain_id_dict, chain_fasta_dict, selected_pdb_list
 
@@ -688,21 +709,23 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Extract training-set graph features with DockQ and edge labels.")
     parser.add_argument("--decoy_dir", required=True, help="Directory containing complex PDBs and decoy PDBs.")
     parser.add_argument("--feature_dir", required=True, help="Output directory for generated features and graphs.")
-    parser.add_argument("--dockq_json", required=True, help="Path to JSON file containing ground-truth DockQ scores.")
+    parser.add_argument("--dockq_dir", required=True, help="Directory containing per-complex ground-truth DockQ JSON files.")
     parser.add_argument("--zscale_path", required=True, help="Path to amino acid z-scale CSV file.")
     parser.add_argument("--info_dir", default=None, help="Directory containing per-structure info JSON files (default: feature_dir/info).")
     parser.add_argument("--esm_dir", default=None, help="Directory containing ESM embeddings (default: feature_dir/esm_embedding).")
     parser.add_argument("--esmif_dir", default=None, help="Directory containing ESM-IF embeddings (default: feature_dir/esmif_mutation_score).")
     parser.add_argument("--ncpus", type=int, default=8, help="Number of worker processes (default: 8).")
+    parser.add_argument("--input_csvs", required=True, nargs="+", help="Train, validation, and test split CSV files.")
     args = parser.parse_args()
 
     PepDockQTrainFeature(
         decoy_dir=args.decoy_dir,
         feature_dir=args.feature_dir,
-        dockq_json=args.dockq_json,
+        dockq_dir=args.dockq_dir,
         zscale_path=args.zscale_path,
         ncpus=args.ncpus,
         info_dir=args.info_dir,
         esm_dir=args.esm_dir,
         esmif_dir=args.esmif_dir,
+        input_csvs=args.input_csvs,
     )
